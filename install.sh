@@ -19,5 +19,5 @@ chmod +x "$INSTALL_DIR/talknado-server"
 chmod +x "$INSTALL_DIR/talknado-server-bin"
 
 echo "Done!"
-echo "Usage:"
-echo "  talknado-server help"
+
+"$INSTALL_DIR/talknado-server" --help || true
