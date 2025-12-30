@@ -39,12 +39,10 @@ start_server() {
     PASSWORD=$(cat "$PASSWORD_FILE")
     TEMP_KEY_FILE="/tmp/talknado-key.$"
 
-    # Start in background
     "$BINARY_PATH" "$PASSWORD" > "$TEMP_KEY_FILE" 2>&1 &
     PID=$!
     echo "$PID" > "$PID_FILE"
 
-    # Wait for key up to 5 seconds, checking every 0.1 sec
     KEY=""
     for i in {1..50}; do
         if [ -s "$TEMP_KEY_FILE" ]; then
@@ -56,7 +54,6 @@ start_server() {
         sleep 0.1
     done
 
-    # Check if process is alive
     if ! ps -p "$PID" > /dev/null 2>&1; then
         echo "Error: Server failed to start"
         cat "$TEMP_KEY_FILE"
@@ -172,6 +169,12 @@ show_version() {
 }
 
 uninstall() {
+	if [ "$EUID" -ne 0 ]; then
+        echo "Error: Uninstall requires root privileges"
+        echo "Run with: sudo $0 uninstall"
+        exit 1
+    fi
+
     echo "Uninstalling Talknado Server..."
     
     if is_running; then
@@ -184,14 +187,9 @@ uninstall() {
         echo "Removed data directory"
     fi
     
-    if [ "$EUID" -ne 0 ]; then
-        echo "To complete uninstallation, run as root:"
-        echo "  sudo rm -f /usr/local/bin/talknado-server /usr/local/bin/talknado-server-bin"
-    else
-        rm -f /usr/local/bin/talknado-server /usr/local/bin/talknado-server-bin
-        echo "Removed binaries"
-        echo "Uninstall complete!"
-    fi
+    rm -f /usr/local/bin/talknado-server /usr/local/bin/talknado-server-bin
+    echo "Removed binaries"
+    echo "Uninstall complete!"
 }
 
 show_help() {
@@ -203,7 +201,7 @@ Commands:
   restart            Restart the server
   status             Show server status
   key                Show connection key
-  set-password <pwd> Set server password (max 16 chars)
+  set-password <pwd> Set server password
   version            Show version information
   uninstall          Uninstall Talknado Server
   help               Show this help
