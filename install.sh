@@ -2,7 +2,12 @@
 
 set -e
 
-REPO_URL="https://raw.githubusercontent.com/SodiumCXI/talknado-server-linux/main"
+if [ "$EUID" -ne 0 ]; then
+    echo "Error: Root access required"
+    exit 1
+fi
+
+REPO_URL="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main"
 INSTALL_DIR="/usr/local/bin"
 
 echo "Installing Talknado Server..."

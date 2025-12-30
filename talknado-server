@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SERVER_VERSION="v1.1.2"
+SUPPORTED_CLIENTS="v1.2.4, v1.2.5"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARY_PATH="$SCRIPT_DIR/talknado-server-bin"
 DATA_DIR="$HOME/.talknado-server"
@@ -125,8 +128,8 @@ set_password() {
         return 1
     fi
 
-    if [ ${#PASSWORD} -gt 16 ]; then
-        echo "Error: Password cannot exceed 16 characters"
+    if [ ${#PASSWORD} -gt 40 ]; then
+        echo "Error: Password cannot exceed 40 characters"
         return 1
     fi
 
@@ -163,12 +166,37 @@ show_key() {
     return 0
 }
 
+show_version() {
+    echo "Talknado Server $SERVER_VERSION"
+    echo "Supported clients: $SUPPORTED_CLIENTS"
+}
+
+uninstall() {
+    echo "Uninstalling Talknado Server..."
+    
+    if is_running; then
+        echo "Stopping server..."
+        stop_server
+    fi
+    
+    if [ -d "$DATA_DIR" ]; then
+        rm -rf "$DATA_DIR"
+        echo "Removed data directory"
+    fi
+    
+    if [ "$EUID" -ne 0 ]; then
+        echo "To complete uninstallation, run as root:"
+        echo "  sudo rm -f /usr/local/bin/talknado-server /usr/local/bin/talknado-server-bin"
+    else
+        rm -f /usr/local/bin/talknado-server /usr/local/bin/talknado-server-bin
+        echo "Removed binaries"
+        echo "Uninstall complete!"
+    fi
+}
+
 show_help() {
     cat << EOF
-Talknado Server Manager
-
 Usage: talknado-server <command> [options]
-
 Commands:
   start              Start the server
   stop               Stop the server
@@ -176,16 +204,9 @@ Commands:
   status             Show server status
   key                Show connection key
   set-password <pwd> Set server password (max 16 chars)
+  version            Show version information
+  uninstall          Uninstall Talknado Server
   help               Show this help
-
-Examples:
-  talknado-server set-password mypass123
-  talknado-server start
-  talknado-server status
-
-Files:
-  Data: $DATA_DIR
-  Binary: $BINARY_PATH
 EOF
 }
 
@@ -196,6 +217,8 @@ case "$1" in
     set-password) set_password "$2" ;;
     status) show_status ;;
     key) show_key ;;
+    version|--version|-v) show_version ;;
+    uninstall) uninstall ;;
     help|--help|-h) show_help ;;
     *)
         show_help
