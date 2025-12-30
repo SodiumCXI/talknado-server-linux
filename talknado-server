@@ -1,0 +1,206 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BINARY_PATH="$SCRIPT_DIR/talknado-server-bin"
+DATA_DIR="$HOME/.talknado-server"
+PID_FILE="$DATA_DIR/talknado-server.pid"
+KEY_FILE="$DATA_DIR/connection.key"
+PASSWORD_FILE="$DATA_DIR/password"
+
+mkdir -p "$DATA_DIR"
+
+is_running() {
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if ps -p "$PID" > /dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+start_server() {
+    if is_running; then
+        echo "Server already running (PID: $(cat "$PID_FILE"))"
+        if [ -f "$KEY_FILE" ]; then
+            echo "Key: $(cat "$KEY_FILE")"
+        fi
+        return 0
+    fi
+
+    if [ ! -f "$PASSWORD_FILE" ]; then
+        echo "Error: Password not set. Use 'talknado-server set-password'"
+        return 1
+    fi
+
+    PASSWORD=$(cat "$PASSWORD_FILE")
+    TEMP_KEY_FILE="/tmp/talknado-key.$"
+
+    # Start in background
+    "$BINARY_PATH" "$PASSWORD" > "$TEMP_KEY_FILE" 2>&1 &
+    PID=$!
+    echo "$PID" > "$PID_FILE"
+
+    # Wait for key up to 5 seconds, checking every 0.1 sec
+    KEY=""
+    for i in {1..50}; do
+        if [ -s "$TEMP_KEY_FILE" ]; then
+            KEY=$(head -n 1 "$TEMP_KEY_FILE")
+            if [ -n "$KEY" ]; then
+                break
+            fi
+        fi
+        sleep 0.1
+    done
+
+    # Check if process is alive
+    if ! ps -p "$PID" > /dev/null 2>&1; then
+        echo "Error: Server failed to start"
+        cat "$TEMP_KEY_FILE"
+        rm -f "$PID_FILE" "$TEMP_KEY_FILE"
+        return 1
+    fi
+
+    if [ -z "$KEY" ]; then
+        echo "Error: Key not received"
+        kill "$PID" 2>/dev/null
+        rm -f "$PID_FILE" "$TEMP_KEY_FILE"
+        return 1
+    fi
+
+    echo "$KEY" > "$KEY_FILE"
+    chmod 600 "$KEY_FILE"
+    rm -f "$TEMP_KEY_FILE"
+
+    echo "Key: $KEY"
+    return 0
+}
+
+stop_server() {
+    if ! is_running; then
+        echo "Server not running"
+        return 0
+    fi
+
+    PID=$(cat "$PID_FILE")
+    kill "$PID" 2>/dev/null
+
+    for i in {1..10}; do
+        if ! ps -p "$PID" > /dev/null 2>&1; then
+            rm -f "$PID_FILE"
+            echo "Server stopped"
+            return 0
+        fi
+        sleep 1
+    done
+
+    kill -9 "$PID" 2>/dev/null
+    rm -f "$PID_FILE"
+    echo "Server stopped"
+    return 0
+}
+
+restart_server() {
+    stop_server
+    sleep 1
+    start_server
+}
+
+set_password() {
+    if [ -z "$1" ]; then
+        echo "Usage: talknado-server set-password <password>"
+        return 1
+    fi
+
+    PASSWORD="$1"
+
+    if echo "$PASSWORD" | grep -q '[[:space:]]'; then
+        echo "Error: Password cannot contain spaces"
+        return 1
+    fi
+
+    if echo "$PASSWORD" | grep -q '[$?*!`\"'\''&;|<>(){}#~\\]'; then
+        echo "Error: Password contains invalid characters"
+        echo "Forbidden: \$ ? * ! \` \\ \" ' & ; | < > ( ) { } [ ] # ~"
+        return 1
+    fi
+
+    if [ ${#PASSWORD} -gt 16 ]; then
+        echo "Error: Password cannot exceed 16 characters"
+        return 1
+    fi
+
+    echo "$PASSWORD" > "$PASSWORD_FILE"
+    chmod 600 "$PASSWORD_FILE"
+    echo "Password set"
+
+    if is_running; then
+        echo "To apply changes, run: restart"
+    fi
+
+    return 0
+}
+
+show_status() {
+    if is_running; then
+        PID=$(cat "$PID_FILE")
+        echo "Running (PID: $PID)"
+        if [ -f "$KEY_FILE" ]; then
+            echo "Key: $(cat "$KEY_FILE")"
+        fi
+    else
+        echo "Stopped"
+    fi
+}
+
+show_key() {
+    if [ ! -f "$KEY_FILE" ]; then
+        echo "Key not found"
+        return 1
+    fi
+
+    echo "Key: $(cat "$KEY_FILE")"
+    return 0
+}
+
+show_help() {
+    cat << EOF
+Talknado Server Manager
+
+Usage: talknado-server <command> [options]
+
+Commands:
+  start              Start the server
+  stop               Stop the server
+  restart            Restart the server
+  status             Show server status
+  key                Show connection key
+  set-password <pwd> Set server password (max 16 chars)
+  help               Show this help
+
+Examples:
+  talknado-server set-password mypass123
+  talknado-server start
+  talknado-server status
+
+Files:
+  Data: $DATA_DIR
+  Binary: $BINARY_PATH
+EOF
+}
+
+case "$1" in
+    start) start_server ;;
+    stop) stop_server ;;
+    restart) restart_server ;;
+    set-password) set_password "$2" ;;
+    status) show_status ;;
+    key) show_key ;;
+    help|--help|-h) show_help ;;
+    *)
+        show_help
+        exit 1
+        ;;
+esac
+
+exit $?
