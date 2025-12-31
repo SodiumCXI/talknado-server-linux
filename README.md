@@ -1,0 +1,3 @@
+Talknado Server **v1.1.2**
+
+Supported clients: **v1.2.4**, **v1.2.5**
