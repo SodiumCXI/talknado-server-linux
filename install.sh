@@ -9,8 +9,12 @@ fi
 
 REPO_URL="https://raw.githubusercontent.com/SodiumCXI/talknado-server-linux/main"
 INSTALL_DIR="/usr/local/bin"
+DATA_DIR="/usr/local/share/talknado-server"
 
 echo "Installing Talknado Server..."
+
+mkdir -p "$DATA_DIR"
+chmod 777 "$DATA_DIR"
 
 curl -fsSL "$REPO_URL/talknado-server" -o "$INSTALL_DIR/talknado-server"
 curl -fsSL "$REPO_URL/talknado-server-bin" -o "$INSTALL_DIR/talknado-server-bin"
