@@ -5,7 +5,7 @@ SUPPORTED_CLIENTS="v1.2.4, v1.2.5"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARY_PATH="$SCRIPT_DIR/talknado-server-bin"
-DATA_DIR="/usr/local/share"
+DATA_DIR="/usr/local/share/talknado-server"
 PID_FILE="$DATA_DIR/talknado-server.pid"
 KEY_FILE="$DATA_DIR/connection.key"
 PASSWORD_FILE="$DATA_DIR/password"
