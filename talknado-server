@@ -5,7 +5,7 @@ SUPPORTED_CLIENTS="v1.2.4, v1.2.5"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARY_PATH="$SCRIPT_DIR/talknado-server-bin"
-DATA_DIR="/usr/local/share/talknado-server"
+DATA_DIR="$HOME/.talknado-server"
 PID_FILE="$DATA_DIR/talknado-server.pid"
 KEY_FILE="$DATA_DIR/connection.key"
 PASSWORD_FILE="$DATA_DIR/password"
@@ -108,7 +108,7 @@ restart_server() {
 
 set_password() {
     if [ -z "$1" ]; then
-        echo "Usage: talknado-server set-password <password>"
+        echo "Usage: talknado-server set-password 'password'"
         return 1
     fi
 
@@ -116,12 +116,6 @@ set_password() {
 
     if echo "$PASSWORD" | grep -q '[[:space:]]'; then
         echo "Error: Password cannot contain spaces"
-        return 1
-    fi
-
-    if echo "$PASSWORD" | grep -q '[$?*!`\"'\''&;|<>(){}#~\\]'; then
-        echo "Error: Password contains invalid characters"
-        echo "Forbidden: \$ ? * ! \` \\ \" ' & ; | < > ( ) { } [ ] # ~"
         return 1
     fi
 
@@ -201,7 +195,7 @@ Commands:
   restart            Restart the server
   status             Show server status
   key                Show connection key
-  set-password <pwd> Set server password
+  set-password 'pwd' Set server password
   version            Show version information
   uninstall          Uninstall Talknado Server
   help               Show this help
