@@ -16,11 +16,13 @@ echo "Installing Talknado Server..."
 mkdir -p "$DATA_DIR"
 chmod 777 "$DATA_DIR"
 
+touch "$DATA_DIR/connection.key" "$DATA_DIR/password"
+chmod 666 "$DATA_DIR/connection.key" "$DATA_DIR/password"
+
 curl -fsSL "$REPO_URL/talknado-server" -o "$INSTALL_DIR/talknado-server"
 curl -fsSL "$REPO_URL/talknado-server-bin" -o "$INSTALL_DIR/talknado-server-bin"
 
-chmod +x "$INSTALL_DIR/talknado-server"
-chmod +x "$INSTALL_DIR/talknado-server-bin"
+chmod +x "$INSTALL_DIR/talknado-server" "$INSTALL_DIR/talknado-server-bin"
 
 echo "Done!"
 
