@@ -1,0 +1,278 @@
+#!/bin/bash
+
+SERVER_VERSION="v1.1.3"
+SUPPORTED_CLIENTS="v1.3.2"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BINARY_PATH="$SCRIPT_DIR/talknado-server-bin"
+DATA_DIR="$HOME/.talknado"
+PID_FILE="$DATA_DIR/talknado.pid"
+KEY_FILE="$DATA_DIR/connection.key"
+PASSWORD_FILE="$DATA_DIR/password"
+
+mkdir -p "$DATA_DIR"
+
+is_running() {
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if ps -p "$PID" > /dev/null 2>&1; then
+            return 0
+        else
+            rm -f "$PID_FILE"
+        fi
+    fi
+    return 1
+}
+
+start_server() {
+    if is_running; then
+        echo "Server already running (PID: $(cat "$PID_FILE"))"
+        if [ -f "$KEY_FILE" ]; then
+            echo "Key: $(cat "$KEY_FILE")"
+        fi
+        return 0
+    fi
+
+    if [ ! -f "$PASSWORD_FILE" ]; then
+        echo "Error: Password not set. Use 'talknado set-password'"
+        return 1
+    fi
+
+    PASSWORD=$(cat "$PASSWORD_FILE")
+    TEMP_KEY_FILE="/tmp/talknado-key.$$"
+
+    "$BINARY_PATH" "$PASSWORD" > "$TEMP_KEY_FILE" 2>&1 &
+    PID=$!
+    echo "$PID" > "$PID_FILE"
+
+    KEY=""
+    for i in {1..50}; do
+        if [ -s "$TEMP_KEY_FILE" ]; then
+            KEY=$(head -n 1 "$TEMP_KEY_FILE")
+            if [ -n "$KEY" ]; then
+                break
+            fi
+        fi
+        sleep 0.1
+    done
+
+    if ! ps -p "$PID" > /dev/null 2>&1; then
+        echo "Error: Server failed to start"
+        cat "$TEMP_KEY_FILE"
+        rm -f "$PID_FILE" "$TEMP_KEY_FILE"
+        return 1
+    fi
+
+    if [ -z "$KEY" ]; then
+        echo "Error: Key not received"
+        kill "$PID" 2>/dev/null
+        rm -f "$PID_FILE" "$TEMP_KEY_FILE"
+        return 1
+    fi
+
+    echo "$KEY" > "$KEY_FILE"
+    chmod 600 "$KEY_FILE"
+    rm -f "$TEMP_KEY_FILE"
+
+    echo "Key: $KEY"
+    return 0
+}
+
+stop_server() {
+    if ! is_running; then
+        echo "Server not running"
+        return 0
+    fi
+
+    PID=$(cat "$PID_FILE")
+    kill "$PID" 2>/dev/null
+
+    for i in {1..10}; do
+        if ! ps -p "$PID" > /dev/null 2>&1; then
+            rm -f "$PID_FILE"
+            echo "Server stopped"
+            return 0
+        fi
+        sleep 1
+    done
+
+    kill -9 "$PID" 2>/dev/null
+    rm -f "$PID_FILE"
+    echo "Server stopped"
+    return 0
+}
+
+stop_all() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Error: stop-all requires root privileges"
+        exit 1
+    fi
+
+    echo "Stopping all Talknado servers..."
+    
+    STOPPED=0
+    
+    if [ -f "/root/.talknado-server/talknado-server.pid" ]; then
+        PID=$(cat "/root/.talknado-server/talknado-server.pid")
+        if ps -p "$PID" > /dev/null 2>&1; then
+            echo "Stopping server for root (PID: $PID)"
+            kill "$PID" 2>/dev/null
+            sleep 1
+            if ps -p "$PID" > /dev/null 2>&1; then
+                kill -9 "$PID" 2>/dev/null
+            fi
+            STOPPED=$((STOPPED + 1))
+        fi
+        rm -f "/root/.talknado-server/talknado-server.pid"
+    fi
+    
+    for home_dir in /home/*; do
+        if [ -d "$home_dir" ]; then
+            pid_file="$home_dir/.talknado-server/talknado-server.pid"
+            if [ -f "$pid_file" ]; then
+                PID=$(cat "$pid_file")
+                if ps -p "$PID" > /dev/null 2>&1; then
+                    echo "Stopping server for $(basename "$home_dir") (PID: $PID)"
+                    kill "$PID" 2>/dev/null
+                    sleep 1
+                    if ps -p "$PID" > /dev/null 2>&1; then
+                        kill -9 "$PID" 2>/dev/null
+                    fi
+                    STOPPED=$((STOPPED + 1))
+                fi
+                rm -f "$pid_file"
+            fi
+        fi
+    done
+    
+    if [ $STOPPED -eq 0 ]; then
+        echo "No running servers found"
+    else
+        echo "Stopped $STOPPED server(s)"
+    fi
+}
+
+restart_server() {
+    stop_server
+    sleep 1
+    start_server
+}
+
+set_password() {
+    if [ -z "$1" ]; then
+        echo "Usage: talknado set-password 'password'"
+        return 1
+    fi
+
+    PASSWORD="$1"
+
+    if echo "$PASSWORD" | grep -q '[[:space:]]'; then
+        echo "Error: Password cannot contain spaces"
+        return 1
+    fi
+
+    if [ ${#PASSWORD} -gt 40 ]; then
+        echo "Error: Password cannot exceed 40 characters"
+        return 1
+    fi
+
+    echo "$PASSWORD" > "$PASSWORD_FILE"
+    chmod 600 "$PASSWORD_FILE"
+    echo "Password set"
+
+    if is_running; then
+        echo "To apply changes, run: restart"
+    fi
+
+    return 0
+}
+
+show_status() {
+    if is_running; then
+        PID=$(cat "$PID_FILE")
+        echo "Running (PID: $PID)"
+        if [ -f "$KEY_FILE" ]; then
+            echo "Key: $(cat "$KEY_FILE")"
+        fi
+    else
+        echo "Stopped"
+    fi
+}
+
+show_key() {
+    if [ ! -f "$KEY_FILE" ]; then
+        echo "Key not found"
+        return 1
+    fi
+
+    echo "Key: $(cat "$KEY_FILE")"
+    return 0
+}
+
+show_version() {
+    echo "Talknado Server $SERVER_VERSION"
+    echo "Supported clients: $SUPPORTED_CLIENTS"
+}
+
+uninstall() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Error: Uninstall requires root privileges"
+        exit 1
+    fi
+
+    echo "Uninstalling Talknado Server..."
+    
+    stop_all
+    
+    if [ -d "/root/.talknado-server" ]; then
+        rm -rf "/root/.talknado-server"
+    fi
+    
+    for home_dir in /home/*; do
+        if [ -d "$home_dir/.talknado-server" ]; then
+            rm -rf "$home_dir/.talknado-server"
+        fi
+    done
+    
+    echo "Removed data directories"
+    
+    rm -f /usr/local/bin/talknado /usr/local/bin/talknado-server-bin
+    echo "Removed binaries"
+    echo "Uninstall complete!"
+}
+
+show_help() {
+    cat << EOF
+Usage: talknado <command> [options]
+Commands:
+  start              Start the server
+  stop               Stop the server
+  stop-all           Stop all servers (requires root)
+  restart            Restart the server
+  status             Show server status
+  key                Show connection key
+  set-password 'pwd' Set server password
+  version            Show version information
+  uninstall          Uninstall Talknado Server (requires root)
+  help               Show this help
+EOF
+}
+
+case "$1" in
+    start) start_server ;;
+    stop) stop_server ;;
+    stop-all) stop_all ;;
+    restart) restart_server ;;
+    set-password) set_password "$2" ;;
+    status) show_status ;;
+    key) show_key ;;
+    version|--version|-v) show_version ;;
+    uninstall) uninstall ;;
+    help|--help|-h) show_help ;;
+    *)
+        show_help
+        exit 1
+        ;;
+esac
+
+exit $?
