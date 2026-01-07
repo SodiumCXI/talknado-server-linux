@@ -112,8 +112,8 @@ stop_all() {
     
     STOPPED=0
     
-    if [ -f "/root/.talknado-server/talknado-server.pid" ]; then
-        PID=$(cat "/root/.talknado-server/talknado-server.pid")
+    if [ -f "/root/.talknado/talknado.pid" ]; then
+        PID=$(cat "/root/.talknado/talknado.pid")
         if ps -p "$PID" > /dev/null 2>&1; then
             echo "Stopping server for root (PID: $PID)"
             kill "$PID" 2>/dev/null
@@ -123,12 +123,12 @@ stop_all() {
             fi
             STOPPED=$((STOPPED + 1))
         fi
-        rm -f "/root/.talknado-server/talknado-server.pid"
+        rm -f "/root/.talknado/talknado.pid"
     fi
     
     for home_dir in /home/*; do
         if [ -d "$home_dir" ]; then
-            pid_file="$home_dir/.talknado-server/talknado-server.pid"
+            pid_file="$home_dir/.talknado/talknado.pid"
             if [ -f "$pid_file" ]; then
                 PID=$(cat "$pid_file")
                 if ps -p "$PID" > /dev/null 2>&1; then
@@ -224,13 +224,13 @@ uninstall() {
     
     stop_all
     
-    if [ -d "/root/.talknado-server" ]; then
-        rm -rf "/root/.talknado-server"
+    if [ -d "/root/.talknado" ]; then
+        rm -rf "/root/.talknado"
     fi
     
     for home_dir in /home/*; do
-        if [ -d "$home_dir/.talknado-server" ]; then
-            rm -rf "$home_dir/.talknado-server"
+        if [ -d "$home_dir/.talknado" ]; then
+            rm -rf "$home_dir/.talknado"
         fi
     done
     
