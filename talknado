@@ -73,7 +73,6 @@ start_server() {
     echo "$KEY" > "$KEY_FILE"
     chmod 600 "$KEY_FILE"
     rm -f "$TEMP_KEY_FILE"
-
     echo "Key: $KEY"
     return 0
 }
@@ -235,7 +234,6 @@ uninstall() {
     done
     
     echo "Removed data directories"
-    
     rm -f /usr/local/bin/talknado /usr/local/bin/talknado-server-bin
     echo "Removed binaries"
     echo "Uninstall complete!"
