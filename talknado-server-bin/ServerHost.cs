@@ -32,7 +32,7 @@ public sealed class ServerHost : IDisposable
         }
         else
         {
-            var result = serverManager.Start(password);
+            var result = serverManager.Start(null);
             if (result.Item1)
                 return null;
             else
