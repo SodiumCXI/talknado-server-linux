@@ -74,6 +74,7 @@ start_server() {
     chmod 600 "$KEY_FILE"
     rm -f "$TEMP_KEY_FILE"
     echo "Key: $KEY"
+	
     return 0
 }
 
@@ -98,6 +99,7 @@ stop_server() {
     kill -9 "$PID" 2>/dev/null
     rm -f "$PID_FILE"
     echo "Server stopped"
+	
     return 0
 }
 
@@ -205,6 +207,7 @@ show_key() {
     fi
 
     echo "Key: $(cat "$KEY_FILE")"
+	
     return 0
 }
 
