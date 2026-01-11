@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SERVER_VERSION="v1.1.3"
-SUPPORTED_CLIENTS="v1.3.2"
+SUPPORTED_CLIENTS="v1.3.2, v1.3.3"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARY_PATH="$SCRIPT_DIR/talknado-server-bin"
