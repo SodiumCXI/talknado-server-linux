@@ -19,7 +19,7 @@ public class ServerInfo : IServerInfo
     private readonly ImmutableArray<string> _validClientVersions = ["v1.3.5"];
     private byte[]? _passwordHash = null;
 
-    public int Port { get; set; } = 37535;
+    public int Port { get; set; }
 
     public string GetServerVersion()
     {

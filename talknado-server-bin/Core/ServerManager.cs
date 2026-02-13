@@ -30,17 +30,17 @@ public class ServerManager(INetworkUtils networkUtils,
     {
         try
         {
-            var port = _serverInfo.Port;
-
-            _listener = new(IPAddress.Any, port);
+            _listener = new(IPAddress.Any, 0);
             _listener.Start(5);
+
+            _serverInfo.Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
 
             var token = _mainTokenSource.Token;
 
             var localIP = GetLocalNetworkIP();
             var globalIP = GetGlobalNetworkIP(token);
 
-            var connectionKey = GetServerConnectionKey(localIP, globalIP, port);
+            var connectionKey = GetServerConnectionKey(localIP, globalIP, _serverInfo.Port);
 
             if (password != null)
                 connectionKey += $"?{password}";
