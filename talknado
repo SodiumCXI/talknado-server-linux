@@ -40,7 +40,6 @@ start_server() {
 
     PASSWORD=$(cat "$PASSWORD_FILE")
     TEMP_KEY_FILE="/tmp/talknado-key.$$"
-
     "$BINARY_PATH" "$PASSWORD" > "$TEMP_KEY_FILE" 2>&1 &
     PID=$!
     echo "$PID" > "$PID_FILE"
@@ -110,7 +109,6 @@ stop_all() {
     fi
 
     echo "Stopping all Talknado servers..."
-    
     STOPPED=0
     
     if [ -f "/root/.talknado/talknado.pid" ]; then
@@ -223,7 +221,6 @@ uninstall() {
     fi
 
     echo "Uninstalling Talknado Server..."
-    
     stop_all
     
     if [ -d "/root/.talknado" ]; then
