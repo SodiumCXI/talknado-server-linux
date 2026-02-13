@@ -15,7 +15,7 @@ public class ServerManager(INetworkUtils networkUtils,
     IServerInfo serverInfo, IClientManager clientManager,
     ICryptoSessionManager cryptoSessionManager) : IServerManager, IDisposable
 {
-    private const string ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789&%";
+    private const string ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$&";
 
     private readonly CancellationTokenSource _mainTokenSource = new();
     private Thread? _serverThread;
@@ -30,17 +30,17 @@ public class ServerManager(INetworkUtils networkUtils,
     {
         try
         {
-            _listener = new(IPAddress.Any, 0);
-            _listener.Start(5);
+            var port = _serverInfo.Port;
 
-            _serverInfo.Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
+            _listener = new(IPAddress.Any, port);
+            _listener.Start(5);
 
             var token = _mainTokenSource.Token;
 
             var localIP = GetLocalNetworkIP();
             var globalIP = GetGlobalNetworkIP(token);
 
-            var connectionKey = GetServerConnectionKey(localIP, globalIP, _serverInfo.Port);
+            var connectionKey = GetServerConnectionKey(localIP, globalIP, port);
 
             if (password != null)
                 connectionKey += $"?{password}";
