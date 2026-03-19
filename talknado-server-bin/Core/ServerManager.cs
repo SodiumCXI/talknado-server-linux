@@ -81,10 +81,14 @@ public class ServerManager(INetworkUtils networkUtils,
 
                     if (!ValidateClientConnection(stream, token, out var userId))
                     {
-                        var data = _cryptoSessionManager.EncryptMessage(Encoding.UTF8.GetBytes("#PNO"));
+                        var data = Encoding.UTF8.GetBytes("#PNO");
+                        _networkUtils.WritePacketAsync(stream, data, token).GetAwaiter().GetResult();
                         tcpClient.Close();
                         continue;
                     }
+
+                    var acceptData = Encoding.UTF8.GetBytes("#ZBS");
+                    _networkUtils.WritePacketAsync(stream, acceptData, token).GetAwaiter().GetResult();
 
                     if (userId != 0)
                         _clientManager.ReconnectClient(tcpClient, userId, token);
